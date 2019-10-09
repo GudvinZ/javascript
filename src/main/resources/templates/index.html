@@ -1,0 +1,237 @@
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>index</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.js"
+            integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
+            crossorigin="anonymous"></script>
+    <script src="index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous"></script>
+</head>
+<body class="bg-dark text-white">
+<div class="container-fluid mt-2">
+    <div class="row">
+        <div class="col-auto" id="addForm">
+            <div class="form-group">
+                <label for="addInputLogin">Login</label>
+                <input type="text" class="form-control" id="addInputLogin" placeholder="Login" maxlength="20"
+                       required name="login">
+            </div>
+            <div class="form-group">
+                <label for="addInputName">Name</label>
+                <input type="text" class="form-control" id="addInputName" placeholder="Name" maxlength="20"
+                       required name="name">
+            </div>
+            <div class="form-group">
+                <label for="addInputPass">Password</label>
+                <input type="password" class="form-control" id="addInputPass" placeholder="Password" maxlength="20"
+                       required name="password">
+            </div>
+            <span class="text">Roles:</span>
+            <div class="form-check-inline">
+                <input type="checkbox" class="form-check-input" id="check1" name="rolesParam" value="user" checked>
+                <label class="form-check-label" for="check1">user</label>
+            </div>
+            <div class="form-check-inline">
+                <input type="checkbox" class="form-check-input" id="check2" name="rolesParam" value="admin">
+                <label class="form-check-label" for="check2">admin</label>
+            </div>
+            <br>
+            <button class="btn btn-success" onclick="addUser();">Add user</button>
+        </div>
+    </div>
+</div>
+<div class="container-fluid">
+    <div class="row" id="usersTable">
+    </div>
+</div>
+
+<script>
+    $(document).ready(() => {
+        $.ajax("http://localhost:8081/users", {
+            success: (json) => {
+                $.each(json, (index, value) => {
+                    addToUsersTable(value.id, value.login, value.name, getRoles(value.roles));
+                });
+            },
+            error: () => {
+                alert("Error!!!");
+            }
+        });
+    });
+
+    function addToUsersTable(id, login, name, sRoles) {
+        $("<div>").addClass("col-auto mt-4").attr("id", "user" + id)
+            .append($("<div>").addClass("card").attr({style: "background: #3a6d80;"})
+                .append($("<div>").addClass("card-body")
+                    .append($("<div>").addClass("card-text")
+                        .append($("<p>").append(`Id: ${id}`))
+                        .append($("<p>").append(`Login: ${login}`))
+                        .append($("<p>").append(`Name: ${name}`))
+                        .append($("<p>").append(`Roles: ${sRoles}`)))
+                    .append($("<button>").addClass("btn btn-primary").attr({onclick: `up(${id});`})
+                        .append("Update"))
+                    .append($("<button>").addClass("btn btn-danger").attr({onclick: `del(${id});`})
+                        .append("Delete"))))
+            .appendTo($("#usersTable"));
+    }
+
+    function addUser() {
+        let login = $("#addInputLogin").val();
+        if (isEmpty(login))
+            alert("Empty login");
+        else {
+            let name = $("#addInputName").val();
+            if (isEmpty(name))
+                alert("Empty name");
+            else {
+                let password = $("#addInputPass").val();
+                if (isEmpty(password))
+                    alert("Empty password");
+                else {
+                    let roles = ["user"];
+                    if ($("#check2").prop('checked'))
+                        roles.push("admin");
+                    $.ajax("http://localhost:8081/users", {
+                        type: "post",
+                        contentType: "application/json",
+                        data: JSON.stringify({
+                            login: login,
+                            name: name,
+                            password: password
+                        }),
+                        xhrFields: {withCredentials: true},
+                        crossDomain: true,
+                        success: (data, textStatus, jqXHR) => {
+                            let location = jqXHR.getResponseHeader("Location");
+                            let id = +location.substr(location.lastIndexOf("/") + 1);
+                            alert(id);
+                            let sRoles = "";
+                            for (let i in roles) {
+                                sRoles += roles[i] + " ";
+                            }
+                            alert(sRoles);
+                            addToUsersTable(id, login, name, sRoles);
+                        },
+                        error: () => {
+                            alert("User is already exist");
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    function getRoles(roles) {
+        let sRoles = "";
+        $.each(roles, (index, role) => {
+            sRoles += role.roleName + " ";
+        });
+        return sRoles;
+    }
+
+
+    function isEmpty(str) {
+        return (typeof str === "undefined" || str === null || str === "");
+    }
+
+    function up(id) {
+        let parent = $(`#user${id}`).children('.card').children('.card-body');
+        let login = parent.children(".card-text").children(":contains('Login')").text().slice(7);
+        let name = parent.children(".card-text").children(":contains('Name')").text().slice(6);
+        let clone = parent.clone();
+
+        parent.children(".card-text").empty()
+            .append($('<div>').addClass("form-group")
+                .append($('<label>').attr("for", `updateInputLogin${id}`).text("Login"))
+                .append($("<input>").addClass("form-control").attr({
+                    type: "text",
+                    id: `updateInputLogin${id}`,
+                    placeholder: "Login",
+                    maxLength: 20,
+                    value: login
+                })))
+            .append($('<div>').addClass("form-group")
+                .append($('<label>').attr("for", `updateInputName${id}`).text("Name"))
+                .append($("<input>").addClass("form-control").attr({
+                    type: "text",
+                    id: `updateInputName${id}`,
+                    placeholder: "Name",
+                    maxLength: 20,
+                    value: name
+                })))
+            .append($('<div>').addClass("form-group")
+                .append($('<label>').attr("for", `updateInputPassword${id}`).text("Password"))
+                .append($("<input>").addClass("form-control").attr({
+                    type: "password",
+                    id: `updateInputPassword${id}`,
+                    placeholder: "Password",
+                    maxLength: 20
+                })));
+        parent.children(".btn-primary")
+            .removeAttr("onclick")
+            .text("Save")
+            .click(() => {
+                let newLogin = $(`#updateInputLogin${id}`).val().trim();
+                let newName = $(`#updateInputName${id}`).val().trim();
+                let newPassword = $(`#updateInputPassword${id}`).val().trim();
+
+                if ((isEmpty(newLogin) || newLogin === login) && (isEmpty(newName) || newName === name) && isEmpty(newPassword))
+                    parent.replaceWith(clone);
+                else {
+                    $.ajax("http://localhost:8081/users", {
+                        type: "put",
+                        data: JSON.stringify({
+                            id: id,
+                            login: newLogin,
+                            name: newName,
+                            password: newPassword
+                        }),
+                        contentType: "application/json",
+                        success: () => {
+                            if (!(isEmpty(newLogin) || newLogin === login))
+                                clone.children(".card-text").children(":contains('Login')").replaceWith($('<p>').text(`Login: ${newLogin}`));
+                            if (!(isEmpty(newName) || newName === name))
+                                clone.children(".card-text").children(":contains('Name')").replaceWith($('<p>').text(`Name: ${newName}`));
+                            parent.replaceWith(clone);
+                        },
+                        error: () => {
+                            alert("wrong login")
+                        }
+                    });
+                }
+            });
+        parent.children(".btn-danger")
+            .removeAttr("onclick")
+            .text("Cancel")
+            .click(() => {
+                parent.replaceWith(clone);
+            });
+    }
+
+    function del(id) {
+        $.ajax(`http://localhost:8081/users/${id}`, {
+            type: "delete",
+            success: () => {
+                $(`#user${id}`).remove();
+            },
+            error: () => {
+                alert("Error!!!");
+            }
+        });
+    }
+</script>
+</body>
+</html>
